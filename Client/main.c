@@ -38,29 +38,15 @@ int main(int argc, char* argv[]) {
 		SDL_Quit();
 		return 1;
 	}
-	DestroyCheckerBoard(pCheckerBoard);
 
-	SDL_Rect aRect;
-	aRect.x = 0;
-	aRect.y = 10;
-	aRect.w = 200;
-	aRect.h = 200;
+	SDL_RenderClear(pRenderer);
+	DrawCheckerBoard(pCheckerBoard, pRenderer, 64, 64);
+	SDL_RenderPresent(pRenderer);
+
 	// 메인 루프
 	Uint64 lastUpdateTick = SDL_GetTicks64();
 	while (1)
 	{
-		// 그리기 테스트
-		Uint64 currentTick = SDL_GetTicks64();
-		if (currentTick - lastUpdateTick > 100)
-		{
-			aRect.x++;
-			lastUpdateTick = currentTick;
-			SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
-			SDL_RenderClear(pRenderer);
-			SDL_SetRenderDrawColor(pRenderer, 255, 255, 255, 255);
-			SDL_RenderFillRect(pRenderer, &aRect);
-			SDL_RenderPresent(pRenderer);
-		}
 
 		// 이벤트 처리
 		SDL_Event event;
@@ -81,6 +67,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	DestroyCheckerBoard(pCheckerBoard);
 	SDL_DestroyWindow(pWindow);
 	SDL_DestroyRenderer(pRenderer);
 	SDL_Quit();
