@@ -1,5 +1,7 @@
 /.vs
-
+/x64
+/Client/x64
+/Server/x64
 # Prerequisites
 *.d
 
