@@ -6,8 +6,8 @@
 * SDL2 (클라이언트 그래픽)
 
 ## 사용법
-Server.exe <listen-address> <listen-port> <server-name>\
-Client.exe <server-address> <server-port> <your-name>
+Server.exe \<listen-address> \<listen-port> \<server-name>\
+Client.exe \<server-address> \<server-port> \<your-name> - SDL 윈도우가 열립니다. 1대1 게임이므로 클라이언트 두개가 필요합니다.
 
 ## 설명
 * 싱글스레드 모델 (양측 모두)
