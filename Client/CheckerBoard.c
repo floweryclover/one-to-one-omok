@@ -80,9 +80,10 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 				}
 
 				int fillSize = 3*(pCheckerBoard->cellSize_ / 4);
+				int fillMargin = (pCheckerBoard->cellSize_ - fillSize) / 2;
 				SDL_Rect fill;
-				fill.x = cell.x + (pCheckerBoard->cellSize_ - fillSize);
-				fill.y = cell.y + (pCheckerBoard->cellSize_ - fillSize);
+				fill.x = cell.x + fillMargin;
+				fill.y = cell.y + fillMargin;
 				fill.w = fillSize;
 				fill.h = fillSize;
 				

@@ -10,9 +10,20 @@
 #define GAMESTATE_BLACK_WIN 1
 #define GAMESTATE_WHITE_WIN 2
 
+// 프로토콜 정의(4바이트 INT 값의 뜻)
+// 0~14: 행 또는 열 입력
+#define OMOKPROTO_NOW_TURN 100 // 니 차례니까 입력하세요
+#define OMOKPROTO_GAMEOVER_BLACKWIN 101 // 게임 끝, 흑돌 승
+#define OMOKPROTO_GAMEOVER_WHITEWIN 102 // 게임 끝, 백돌 승
+
+typedef enum CellState_t {
+	EMPTY,
+	BLACK,
+	WHITE
+} CellState;
+
 int ReceiveExact(SOCKET from, int size, char* buf);
-int ProcessGame(SOCKET whose, CellState turn, CellState** board);
-enum CellState;
+int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15]);
 
 int main(int argc, char* argv[])
 {
@@ -39,7 +50,7 @@ int main(int argc, char* argv[])
 	}
 	SOCKADDR_IN hint;
 	ZeroMemory(&hint, sizeof(SOCKADDR_IN));
-	hint.sin_addr.S_un.S_addr = inet_addr(argv[1]);
+	inet_pton(AF_INET, argv[1], &hint.sin_addr);
 	hint.sin_port = htons(atoi(argv[2]));
 	hint.sin_family = AF_INET;
 
@@ -72,16 +83,30 @@ int main(int argc, char* argv[])
 		WSACleanup();
 		return 1;
 	}
+
+	char sendBuf[4];
+
 	char blackPlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(blackSocket, MAX_PLAYER_NAME_LENGTH, blackPlayerName);
 	printf("Player-black joined: %s\n", blackPlayerName);
+	CellState black = BLACK;
+	memcpy(sendBuf, &black, 4);
+	result = send(blackSocket, sendBuf, 4, 0);
+	if (result == SOCKET_ERROR)
+	{
+		printf("send() failed(black): %d", WSAGetLastError());
+		closesocket(listenSocket);
+		closesocket(blackSocket);
+		WSACleanup();
+		return 1;
+	}
 
 
 	printf("waiting for player-white...\n");
 	SOCKADDR_IN whiteSockAddr;
 	int whiteSockAddrSize = sizeof(whiteSockAddr);
 	SOCKET whiteSocket = accept(listenSocket, (struct sockaddr*)&whiteSockAddr, &whiteSockAddrSize);
-	if (blackSocket == INVALID_SOCKET)
+	if (whiteSocket == INVALID_SOCKET)
 	{
 		printf("accept() failed(white): %d", WSAGetLastError());
 		closesocket(listenSocket);
@@ -92,15 +117,35 @@ int main(int argc, char* argv[])
 	char whitePlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(whiteSocket, MAX_PLAYER_NAME_LENGTH, whitePlayerName);
 	printf("Player-white joined: %s\n", whitePlayerName);
+	CellState white = WHITE;
+	memcpy(sendBuf, &white, 4);
+	result = send(whiteSocket, sendBuf, 4, 0);
+	if (result == SOCKET_ERROR)
+	{
+		printf("send() failed(white): %d", WSAGetLastError());
+		closesocket(listenSocket);
+		closesocket(blackSocket);
+		closesocket(whiteSocket);
+		WSACleanup();
+		return 1;
+	}
+
 
 	CellState board[15][15];
-	ZeroMemory(board, sizeof(CellState));
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+		{
+			board[i][j] = EMPTY;
+		}
+	}
 	int remainCellCount = 15 * 15;
 
+	printf("Game Start!\n\n");
 	CellState turn = BLACK;
 	while (1)
 	{
-		int result = ProcessGame((turn == BLACK ? blackSocket : whiteSocket), turn, board);
+		int result = ProcessGame((turn == BLACK ? blackSocket : whiteSocket), (turn == BLACK ? whiteSocket : blackSocket), turn, board);
 		if (result == GAMESTATE_ERROR)
 		{
 			printf("An error occured\n");
@@ -147,15 +192,19 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-typedef enum CellState_t {
-	EMPTY,
-	BLACK,
-	WHITE
-} CellState;
-
-int ProcessGame(SOCKET whose, CellState turn, CellState** board)
+int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15])
 {
+	printf("%s's turn\n", turn == BLACK ? "BLACK" : "WHITE");
 	char buf[4];
+	int toSend = OMOKPROTO_NOW_TURN;
+	memcpy(buf, &toSend, 4);
+	int result = send(whose, buf, sizeof(buf), 0);
+	if (result == SOCKET_ERROR)
+	{
+		printf("TURN SEND ERROR\n");
+		return GAMESTATE_ERROR;
+	}
+	
 	int row, column;
 	// 흑돌 행
 	ReceiveExact(whose, 4, buf);
@@ -167,17 +216,36 @@ int ProcessGame(SOCKET whose, CellState turn, CellState** board)
 	// 유효한 범위인지 확인
 	if (row < 0 || row > 14 || column < 0 || column > 14)
 	{
+		printf("OUT OF BOARD ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
 	// 놓을 수 없는데 놓으려고 하는건지 검증
 	if (board[row][column] != EMPTY)
 	{
+		printf("CELL OCCUPIED ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
 	// 놓기
 	board[row][column] = (turn == BLACK ? BLACK : WHITE);
+
+	// 다른 쪽에게 데이터 보내기
+	memcpy(buf, &row, 4);
+	result = send(other, buf, sizeof(buf), 0);
+	if (result == SOCKET_ERROR)
+	{
+		printf("ROW SEND ERROR\n");
+		return GAMESTATE_ERROR;
+	}
+	memcpy(buf, &column, 4);
+	result = send(other, buf, sizeof(buf), 0);
+	if (result == SOCKET_ERROR)
+	{
+		printf("COLUMN SEND ERROR\n");
+		return GAMESTATE_ERROR;
+	}
+
 	
 	// 오목을 완성했는지 확인
 	for (int i = 0; i < 15; i++) // 가로
