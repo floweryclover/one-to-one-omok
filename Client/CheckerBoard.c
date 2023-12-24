@@ -56,8 +56,6 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 
 	int finalCellSize = pCheckerBoard->cellSize_ + (pCheckerBoard->margin_ * 2);
 	SDL_Rect cell;
-	cell.x = 0;
-	cell.y = 0;
 	cell.w = pCheckerBoard->cellSize_;
 	cell.h = pCheckerBoard->cellSize_;
 	
@@ -65,8 +63,8 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 	{
 		for (int j = 0; j < 15; j++)
 		{
-			cell.y = pCheckerBoard->offsetY_ + finalCellSize * i;
-			cell.x = pCheckerBoard->offsetX_ + finalCellSize * j;
+			cell.y = pCheckerBoard->offsetY_ + finalCellSize * i + pCheckerBoard->margin_;
+			cell.x = pCheckerBoard->offsetX_ + finalCellSize * j + pCheckerBoard->margin_;
 			SDL_SetRenderDrawColor(pRenderer, 208, 147, 109, 255);
 			SDL_RenderFillRect(pRenderer, &cell);
 
@@ -83,8 +81,8 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 
 				int fillSize = 3*(pCheckerBoard->cellSize_ / 4);
 				SDL_Rect fill;
-				fill.x = cell.x + (pCheckerBoard->cellSize_ - fillSize) / 2;
-				fill.y = cell.y + (pCheckerBoard->cellSize_ - fillSize) / 2;
+				fill.x = cell.x + (pCheckerBoard->cellSize_ - fillSize);
+				fill.y = cell.y + (pCheckerBoard->cellSize_ - fillSize);
 				fill.w = fillSize;
 				fill.h = fillSize;
 				
