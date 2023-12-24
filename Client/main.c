@@ -46,26 +46,14 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
-	SDL_RenderClear(pRenderer);
-	DrawCheckerBoard(pCheckerBoard, pRenderer);
-	SDL_RenderPresent(pRenderer);
-
-	UpdateCell(pCheckerBoard, 1, 2, BLACK);
-	UpdateCell(pCheckerBoard, 3, 6, WHITE);
-
-	SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
-	SDL_RenderClear(pRenderer);
-	DrawCheckerBoard(pCheckerBoard, pRenderer);
-	SDL_RenderPresent(pRenderer);
-
 	// 메인 루프
 	Uint64 lastUpdateTick = SDL_GetTicks64();
+	
 	while (1)
 	{
-
 		// 이벤트 처리
 		SDL_Event event;
+		
 		int eventOccured = SDL_PollEvent(&event);
 		if (eventOccured)
 		{
@@ -80,6 +68,31 @@ int main(int argc, char* argv[]) {
 			{
 				break;
 			}
+			else if (event.type == SDL_MOUSEBUTTONUP)
+			{
+				if (event.button.button = SDL_BUTTON_LEFT)
+				{
+					int a;
+					int b;
+					if (GetMousePositionOverBoard(pCheckerBoard, &event, &a, &b))
+					{
+						printf("ROW: %d, COL: %d\n", a, b);
+					}
+					else
+					{
+						printf("no cell clicked\n");
+					}
+				}
+			}
+
+			// 이벤트 처리 후 업데이트
+			SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
+			SDL_RenderClear(pRenderer);
+			
+			DrawCheckerBoard(pCheckerBoard, pRenderer);
+			DrawCursorHovering(pCheckerBoard, pRenderer, &event);
+
+			SDL_RenderPresent(pRenderer);
 		}
 	}
 

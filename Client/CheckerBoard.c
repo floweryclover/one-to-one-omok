@@ -54,7 +54,7 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 		return;
 	}
 
-	int finalCellSize = pCheckerBoard->cellSize_ + (pCheckerBoard->margin_ / 2);
+	int finalCellSize = pCheckerBoard->cellSize_ + (pCheckerBoard->margin_ * 2);
 	SDL_Rect cell;
 	cell.x = 0;
 	cell.y = 0;
@@ -94,6 +94,30 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer)
 	}
 }
 
+void DrawCursorHovering(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer, SDL_Event* pEvent)
+{
+	if (pCheckerBoard == NULL || pRenderer == NULL || pEvent == NULL)
+	{
+		return;
+	}
+
+	int cursorRow, cursorColumn;
+	if (!GetMousePositionOverBoard(pCheckerBoard, pEvent, &cursorRow, &cursorColumn))
+	{
+		return;
+	}
+
+	int finalCellSize = pCheckerBoard->cellSize_ + (pCheckerBoard->margin_ * 2);
+	SDL_Rect hover;
+	hover.x = pCheckerBoard->offsetX_ + (finalCellSize * cursorColumn);
+	hover.y = pCheckerBoard->offsetY_ + (finalCellSize * cursorRow);
+	hover.w = finalCellSize;
+	hover.h = finalCellSize;
+
+	SDL_SetRenderDrawColor(pRenderer, 255, 255, 255, 0);
+	SDL_RenderDrawRect(pRenderer, &hover);
+}
+
 void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, CellState value)
 {
 	if (pCheckerBoard == NULL)
@@ -104,7 +128,7 @@ void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, CellState valu
 	pCheckerBoard->cellStates_[row][column] = value;
 }
 
-int ProcessCellClick(CheckerBoard* pCheckerBoard, SDL_Event* pEvent, int* outRow, int* outCol)
+int GetMousePositionOverBoard(CheckerBoard* pCheckerBoard, SDL_Event* pEvent, int* outRow, int* outCol)
 {
 	if (pCheckerBoard == NULL)
 	{
@@ -115,5 +139,28 @@ int ProcessCellClick(CheckerBoard* pCheckerBoard, SDL_Event* pEvent, int* outRow
 	{
 		return 0;
 	}
-	return 0;
+
+	int finalCellSize, boardWidth, boardHeight;
+	finalCellSize = pCheckerBoard->cellSize_ + (pCheckerBoard->margin_ * 2);
+	boardWidth = finalCellSize * 15;
+	boardHeight = finalCellSize * 15;
+
+	int mouseX, mouseY;
+	SDL_GetMouseState(&mouseX, &mouseY);
+
+	int column = (mouseX - pCheckerBoard->offsetX_) / finalCellSize;
+	int row = (mouseY - pCheckerBoard->offsetY_) / finalCellSize;
+
+	if (column < 0 || column > 14
+		|| row < 0 || row > 14)
+	{
+		return 0;
+	}
+
+	*outRow = row;
+	*outCol = column;
+
+	return 1;
 }
+
+
