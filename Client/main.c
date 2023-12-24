@@ -3,6 +3,13 @@
 
 #include "CheckerBoard.h"
 
+#pragma comment(lib, "SDL2main.lib")
+
+#define CELL_SIZE 32
+#define CELL_MARGIN 4
+#define OFFSET_X 32
+#define OFFSET_Y 32
+
 int main(int argc, char* argv[]) {
 	SDL_Init(SDL_INIT_EVERYTHING);
 
@@ -29,7 +36,7 @@ int main(int argc, char* argv[]) {
 
 	// 오목판 객체 테스트
 	CheckerBoard* pCheckerBoard = NULL;
-	pCheckerBoard = CreateCheckerBoard();
+	pCheckerBoard = CreateCheckerBoard(OFFSET_X, OFFSET_Y, CELL_SIZE, CELL_MARGIN);
 	if (!pCheckerBoard)
 	{
 		printf("CreateCheckerBoard() failed.\n");
@@ -39,8 +46,17 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
 	SDL_RenderClear(pRenderer);
-	DrawCheckerBoard(pCheckerBoard, pRenderer, 64, 64);
+	DrawCheckerBoard(pCheckerBoard, pRenderer);
+	SDL_RenderPresent(pRenderer);
+
+	UpdateCell(pCheckerBoard, 1, 2, BLACK);
+	UpdateCell(pCheckerBoard, 3, 6, WHITE);
+
+	SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
+	SDL_RenderClear(pRenderer);
+	DrawCheckerBoard(pCheckerBoard, pRenderer);
 	SDL_RenderPresent(pRenderer);
 
 	// 메인 루프
