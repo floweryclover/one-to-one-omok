@@ -5,6 +5,10 @@
 * Windows Socket 2
 * SDL2 (클라이언트 그래픽)
 
+## 프로젝트 빌드
+* CMake 변수 SDL_INCLUDE_DIR(/include), SDL_LIB_DIR(/lib/x64) 지정이 필요합니다.
+  * Client/CMakeLists.txt에서 직접 수정하거나 CMake 명령어로 지정하세요.
+
 ## 사용법
 Server.exe \<listen-address> \<listen-port> \<server-name>\
 Client.exe \<server-address> \<server-port> \<your-name> - SDL 윈도우가 열립니다. 1대1 게임이므로 클라이언트 두개가 필요합니다.

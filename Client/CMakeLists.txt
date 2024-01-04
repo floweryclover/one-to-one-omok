@@ -6,8 +6,8 @@ add_executable(Client
         CheckerBoard.c
 )
 
-set(SDL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../../SDL2-2.28.5/include") # SDL2 include folder
-set(SDL_LIB_DIR "${CMAKE_SOURCE_DIR}/../../SDL2-2.28.5/lib/x64") # SDL2 lib(x64) folder
+set(SDL_INCLUDE_DIR "" CACHE PATH "Path to SDL2 include folder e.g. /your/sdl2/include")
+set(SDL_LIB_DIR "" CACHE PATH "Path to SDL2 lib(x64) folder e.g. /your/sdl2/lib/x64")
 
 target_include_directories(Client PRIVATE ${SDL_INCLUDE_DIR})
 target_link_libraries(Client PRIVATE "${SDL_LIB_DIR}/SDL2.lib")
