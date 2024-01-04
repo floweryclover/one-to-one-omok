@@ -1,6 +1,6 @@
 #include <stdlib.h>
-#include <SDL2/SDL.h>
 
+#include "SDL.h"
 #include "CheckerBoard.h"
 
 CheckerBoard* CreateCheckerBoard(unsigned short offsetX, unsigned short offsetY, unsigned short cellSize, unsigned short margin)
