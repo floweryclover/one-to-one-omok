@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <SDL2/SDL.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
+#include "SDL.h"
 #include "CheckerBoard.h"
 
 #pragma comment(lib, "SDL2main.lib")
@@ -15,11 +15,9 @@
 
 #define MAX_PLAYER_NAME_LENGTH 16
 
-// 프로토콜 정의(4바이트 INT 값의 뜻)
-// 0~14: 행 또는 열 입력
-#define OMOKPROTO_NOW_TURN 100 // 니 차례니까 입력하세요
-#define OMOKPROTO_GAMEOVER_BLACKWIN 101 // 게임 끝, 흑돌 승
-#define OMOKPROTO_GAMEOVER_WHITEWIN 102 // 게임 끝, 백돌 승
+#define OMOKPROTO_NOW_TURN 100
+#define OMOKPROTO_GAMEOVER_BLACKWIN 101
+#define OMOKPROTO_GAMEOVER_WHITEWIN 102
 
 int ReceiveExact(SOCKET from, int size, char* buf);
 
@@ -28,11 +26,10 @@ int main(int argc, char* argv[]) {
 
 	if (argc != 4)
 	{
-		printf("usage: %s <server-address> <server-port> <your-name>", argv[0]);
+		fprintf(stderr, "usage: %s <server-address> <server-port> <your-name>", argv[0]);
 		return 1;
 	}
 
-	// Window 초기화
 	SDL_Window* pWindow = NULL;
 	pWindow = SDL_CreateWindow("Omok Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, 0);
 	if (!pWindow)
@@ -43,7 +40,6 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// Renderer 초기화
 	SDL_Renderer* pRenderer = NULL;
 	pRenderer = SDL_CreateRenderer(pWindow, -1, 0);
 	if (!pRenderer)
@@ -55,7 +51,6 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// 오목판 객체 테스트
 	CheckerBoard* pCheckerBoard = NULL;
 	pCheckerBoard = CreateCheckerBoard(OFFSET_X, OFFSET_Y, CELL_SIZE, CELL_MARGIN);
 	if (!pCheckerBoard)
@@ -68,7 +63,6 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// 통신 준비
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result)
@@ -111,17 +105,16 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// 플레이어 이름 전송
 	char nameBuf[MAX_PLAYER_NAME_LENGTH];
 	strcpy_s(nameBuf, MAX_PLAYER_NAME_LENGTH, argv[3]);
 	send(clientSocket, nameBuf, MAX_PLAYER_NAME_LENGTH, 0);
 
 	char buf[64];
-	CellState me; // 내 색상 수신
+	CellState me;
 	result = ReceiveExact(clientSocket, 4, buf);
 	if (result == SOCKET_ERROR)
 	{
-		printf("recv() failed(색상 수신): %d\n", WSAGetLastError());
+		printf("recv() failed(占쏙옙占쏙옙 占쏙옙占쏙옙): %d\n", WSAGetLastError());
 		SDL_DestroyWindow(pWindow);
 		SDL_DestroyRenderer(pRenderer);
 		SDL_Quit();
@@ -133,7 +126,6 @@ int main(int argc, char* argv[]) {
 	memcpy(&me, buf, 4);
 	printf("I AM %s", me == BLACK? "BLACK" : "WHITE");
 
-	// 논블로킹 소켓으로 전환
 	u_long on = 1;
 	result = ioctlsocket(clientSocket, FIONBIO, &on);
 	if (result == SOCKET_ERROR)
@@ -148,7 +140,6 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// 메인 루프
 	Uint64 lastUpdateTick = SDL_GetTicks64();
 	int receivedData;
 	int receivedRow = 0;
@@ -210,7 +201,6 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
-		// 이벤트 처리
 		SDL_Event event;
 		
 		int eventOccured = SDL_PollEvent(&event);
@@ -229,7 +219,7 @@ int main(int argc, char* argv[]) {
 			}
 			else if (event.type == SDL_MOUSEBUTTONUP)
 			{
-				if (event.button.button = SDL_BUTTON_LEFT)
+				if (event.button.button == SDL_BUTTON_LEFT)
 				{
 					if (isMyTurn)
 					{
@@ -276,7 +266,7 @@ int main(int argc, char* argv[]) {
 				}
 			}
 		}
-		// 이벤트 처리 후 업데이트
+
 		SDL_SetRenderDrawColor(pRenderer, 0, 0, 0, 255);
 		SDL_RenderClear(pRenderer);
 

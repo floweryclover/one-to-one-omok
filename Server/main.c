@@ -10,11 +10,9 @@
 #define GAMESTATE_BLACK_WIN 1
 #define GAMESTATE_WHITE_WIN 2
 
-// ÇÁ·ÎÅäÄÝ Á¤ÀÇ(4¹ÙÀÌÆ® INT °ªÀÇ ¶æ)
-// 0~14: Çà ¶Ç´Â ¿­ ÀÔ·Â
-#define OMOKPROTO_NOW_TURN 100 // ´Ï Â÷·Ê´Ï±î ÀÔ·ÂÇÏ¼¼¿ä
-#define OMOKPROTO_GAMEOVER_BLACKWIN 101 // °ÔÀÓ ³¡, Èæµ¹ ½Â
-#define OMOKPROTO_GAMEOVER_WHITEWIN 102 // °ÔÀÓ ³¡, ¹éµ¹ ½Â
+#define OMOKPROTO_NOW_TURN 100
+#define OMOKPROTO_GAMEOVER_BLACKWIN 101
+#define OMOKPROTO_GAMEOVER_WHITEWIN 102
 
 typedef enum CellState_t {
 	EMPTY,
@@ -206,31 +204,31 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 	}
 	
 	int row, column;
-	// Èæµ¹ Çà
+	// ï¿½æµ¹ ï¿½ï¿½
 	ReceiveExact(whose, 4, buf);
 	memcpy(&row, buf, 4);
-	// Èæµ¹ ¿­
+	// ï¿½æµ¹ ï¿½ï¿½
 	ReceiveExact(whose, 4, buf);
 	memcpy(&column, buf, 4);
 
-	// À¯È¿ÇÑ ¹üÀ§ÀÎÁö È®ÀÎ
+	// ï¿½ï¿½È¿ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
 	if (row < 0 || row > 14 || column < 0 || column > 14)
 	{
 		printf("OUT OF BOARD ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
-	// ³õÀ» ¼ö ¾ø´Âµ¥ ³õÀ¸·Á°í ÇÏ´Â°ÇÁö °ËÁõ
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Âµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï´Â°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	if (board[row][column] != EMPTY)
 	{
 		printf("CELL OCCUPIED ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
-	// ³õ±â
+	// ï¿½ï¿½ï¿½ï¿½
 	board[row][column] = (turn == BLACK ? BLACK : WHITE);
 
-	// ´Ù¸¥ ÂÊ¿¡°Ô µ¥ÀÌÅÍ º¸³»±â
+	// ï¿½Ù¸ï¿½ ï¿½Ê¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	memcpy(buf, &row, 4);
 	result = send(other, buf, sizeof(buf), 0);
 	if (result == SOCKET_ERROR)
@@ -247,8 +245,8 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 	}
 
 	
-	// ¿À¸ñÀ» ¿Ï¼ºÇß´ÂÁö È®ÀÎ
-	for (int i = 0; i < 15; i++) // °¡·Î
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï¼ï¿½ï¿½ß´ï¿½ï¿½ï¿½ È®ï¿½ï¿½
+	for (int i = 0; i < 15; i++) // ï¿½ï¿½ï¿½ï¿½
 	{
 		for (int j = 0; j < 15 - 5; j++)
 		{
@@ -258,7 +256,7 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 			}
 		}
 	}
-	for (int i = 0; i < 15-5; i++) // ¼¼·Î
+	for (int i = 0; i < 15-5; i++) // ï¿½ï¿½ï¿½ï¿½
 	{
 		for (int j = 0; j < 15; j++)
 		{
@@ -268,7 +266,7 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 			}
 		}
 	}
-	for (int i = 0; i < 15 - 5; i++) // ´ë°¢¼±
+	for (int i = 0; i < 15 - 5; i++) // ï¿½ë°¢ï¿½ï¿½
 	{
 		for (int j = 0; j < 15 - 5; j++)
 		{
