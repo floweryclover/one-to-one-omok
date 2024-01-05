@@ -1,18 +1,11 @@
 #include <stdio.h>
-#include <WinSock2.h>
-#include <WS2tcpip.h>
 
-#pragma comment(lib, "ws2_32.lib")
+#include "network.h"
 
-#define MAX_PLAYER_NAME_LENGTH 16
-#define GAMESTATE_ERROR -1
+#define GAMESTATE_ERROR (-1)
 #define GAMESTATE_NOTHING 0
 #define GAMESTATE_BLACK_WIN 1
 #define GAMESTATE_WHITE_WIN 2
-
-#define OMOKPROTO_NOW_TURN 100
-#define OMOKPROTO_GAMEOVER_BLACKWIN 101
-#define OMOKPROTO_GAMEOVER_WHITEWIN 102
 
 typedef enum CellState_t {
 	EMPTY,
@@ -20,7 +13,6 @@ typedef enum CellState_t {
 	WHITE
 } CellState;
 
-int ReceiveExact(SOCKET from, int size, char* buf);
 int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15]);
 
 int main(int argc, char* argv[])
@@ -98,6 +90,7 @@ int main(int argc, char* argv[])
 		printf("accept() failed(white): %d", WSAGetLastError());
 		goto Cleanup_3;
 	}
+
 	char whitePlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(whiteSocket, MAX_PLAYER_NAME_LENGTH, whitePlayerName);
 	printf("Player-white joined: %s\n", whitePlayerName);
@@ -263,25 +256,4 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 	}
 
 	return GAMESTATE_NOTHING;
-}
-
-int ReceiveExact(SOCKET from, int size, char* buf)
-{
-	if (size <= 0)
-	{
-		return -1;
-	}
-
-	int remain = size;
-	while (remain > 0)
-	{
-		int received = recv(from, buf, remain, 0);
-		if (received == 0)
-		{
-			printf("connection closed");
-			return 0;
-		}
-		remain -= received;
-	}
-	return size;
 }

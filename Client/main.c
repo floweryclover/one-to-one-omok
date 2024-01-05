@@ -1,25 +1,10 @@
 #include <stdio.h>
-#include <WinSock2.h>
-#include <WS2tcpip.h>
 
 #include "SDL.h"
 #include "CheckerBoard.h"
+#include "network.h"
 
 #pragma comment(lib, "SDL2main.lib")
-#pragma comment(lib, "ws2_32.lib")
-
-#define CELL_SIZE 32
-#define CELL_MARGIN 4
-#define OFFSET_X 32
-#define OFFSET_Y 32
-
-#define MAX_PLAYER_NAME_LENGTH 16
-
-#define OMOKPROTO_NOW_TURN 100
-#define OMOKPROTO_GAMEOVER_BLACKWIN 101
-#define OMOKPROTO_GAMEOVER_WHITEWIN 102
-
-int ReceiveExact(SOCKET from, int size, char* buf);
 
 int main(int argc, char* argv[]) {
 	SDL_Init(SDL_INIT_EVERYTHING);
@@ -265,32 +250,4 @@ Cleanup_1:
     SDL_Quit();
 Cleanup_0:
 	return 0;
-}
-
-int ReceiveExact(SOCKET from, int size, char* buf)
-{
-	if (size <= 0)
-	{
-		return -1;
-	}
-
-	int remain = size;
-	while (remain > 0)
-	{
-		int received = recv(from, buf, remain, 0);
-		if (received == SOCKET_ERROR)
-		{
-			return SOCKET_ERROR;
-		}
-		else if (received == 0)
-		{
-			printf("connection closed\n");
-			return 0;
-		}
-		else
-		{
-			remain -= received;
-		}
-	}
-	return size;
 }
