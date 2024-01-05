@@ -9,8 +9,6 @@
 #define OFFSET_X 32
 #define OFFSET_Y 32
 
-#pragma comment(lib, "SDL2main.lib")
-
 int main(int argc, char* argv[]) {
 	SDL_Init(SDL_INIT_EVERYTHING);
 
