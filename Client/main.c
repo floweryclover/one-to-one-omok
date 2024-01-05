@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 	if (argc != 4)
 	{
 		fprintf(stderr, "usage: %s <server-address> <server-port> <your-name>", argv[0]);
-		return 1;
+		goto Cleanup_0;
 	}
 
 	SDL_Window* pWindow = NULL;
@@ -35,9 +35,7 @@ int main(int argc, char* argv[]) {
 	if (!pWindow)
 	{
 		printf("SDL_CreateWindow() failed: %s\n", SDL_GetError());
-		SDL_Quit();
-		system("pause");
-		return 1;
+		goto Cleanup_1;
 	}
 
 	SDL_Renderer* pRenderer = NULL;
@@ -45,10 +43,7 @@ int main(int argc, char* argv[]) {
 	if (!pRenderer)
 	{
 		printf("SDL_CreateRenderer() failed: %s\n", SDL_GetError());
-		SDL_DestroyWindow(pWindow);
-		SDL_Quit();
-		system("pause");
-		return 1;
+		goto Cleanup_2;
 	}
 
 	CheckerBoard* pCheckerBoard = NULL;
@@ -56,11 +51,7 @@ int main(int argc, char* argv[]) {
 	if (!pCheckerBoard)
 	{
 		printf("CreateCheckerBoard() failed.\n");
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		system("pause");
-		return 1;
+		goto Cleanup_3;
 	}
 
 	WSADATA wsaData;
@@ -68,23 +59,14 @@ int main(int argc, char* argv[]) {
 	if (result)
 	{
 		printf("WSAStartup() failed.\n");
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		system("pause");
-		return 1;
+		goto Cleanup_4;
 	}
 
 	SOCKET clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (clientSocket == INVALID_SOCKET)
 	{
 		printf("socket() failed: %d\n", WSAGetLastError());
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		WSACleanup();
-		system("pause");
-		return 1;
+		goto Cleanup_5;
 	}
 
 	SOCKADDR_IN serverAddr;
@@ -97,12 +79,7 @@ int main(int argc, char* argv[]) {
 	if (result == SOCKET_ERROR)
 	{
 		printf("connect() failed: %d\n", WSAGetLastError());
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		WSACleanup();
-		system("pause");
-		return 1;
+		goto Cleanup_6;
 	}
 
 	char nameBuf[MAX_PLAYER_NAME_LENGTH];
@@ -114,14 +91,8 @@ int main(int argc, char* argv[]) {
 	result = ReceiveExact(clientSocket, 4, buf);
 	if (result == SOCKET_ERROR)
 	{
-		printf("recv() failed(���� ����): %d\n", WSAGetLastError());
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		closesocket(clientSocket);
-		WSACleanup();
-		system("pause");
-		return 1;
+		printf("recv() failed: %d\n", WSAGetLastError());
+        goto Cleanup_6;
 	}
 	memcpy(&me, buf, 4);
 	printf("I AM %s", me == BLACK? "BLACK" : "WHITE");
@@ -131,13 +102,7 @@ int main(int argc, char* argv[]) {
 	if (result == SOCKET_ERROR)
 	{
 		printf("ioctlsocket() failed: %d\n", WSAGetLastError());
-		SDL_DestroyWindow(pWindow);
-		SDL_DestroyRenderer(pRenderer);
-		SDL_Quit();
-		closesocket(clientSocket);
-		WSACleanup();
-		system("pause");
-		return 1;
+		goto Cleanup_6;
 	}
 
 	Uint64 lastUpdateTick = SDL_GetTicks64();
@@ -279,14 +244,26 @@ int main(int argc, char* argv[]) {
 		SDL_RenderPresent(pRenderer);
 	}
 
-	DestroyCheckerBoard(pCheckerBoard);
-	SDL_DestroyWindow(pWindow);
-	SDL_DestroyRenderer(pRenderer);
-	SDL_Quit();
-	shutdown(clientSocket, SD_SEND);
+
+
+
+Cleanup_6:
+    if (shutdown(clientSocket, SD_SEND) == SOCKET_ERROR)
+    {
+        fprintf(stderr, "shutdown() error: %d\n", WSAGetLastError());
+    }
 	closesocket(clientSocket);
+Cleanup_5:
 	WSACleanup();
-	system("pause");
+Cleanup_4:
+    DestroyCheckerBoard(pCheckerBoard);
+Cleanup_3:
+    SDL_DestroyRenderer(pRenderer);
+Cleanup_2:
+    SDL_DestroyWindow(pWindow);
+Cleanup_1:
+    SDL_Quit();
+Cleanup_0:
 	return 0;
 }
 

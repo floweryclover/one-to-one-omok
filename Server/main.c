@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	if (argc != 4)
 	{
 		fprintf(stderr, "usage: %s <listen-address> <port> <server-name>", argv[0]);
-		return 1;
+		goto Cleanup_0;
 	}
 
 	WSADATA wsaData;
@@ -36,15 +36,14 @@ int main(int argc, char* argv[])
 	if (result)
 	{
 		printf("WSAStartup() failed: %d", result);
-		return 1;
+		goto Cleanup_0;
 	}
 
 	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (listenSocket == INVALID_SOCKET)
 	{
 		printf("Failed to create listenSocket: %d", WSAGetLastError());
-		WSACleanup();
-		return 1;
+		goto Cleanup_1;
 	}
 	SOCKADDR_IN hint;
 	ZeroMemory(&hint, sizeof(SOCKADDR_IN));
@@ -56,18 +55,14 @@ int main(int argc, char* argv[])
 	if (result == SOCKET_ERROR)
 	{
 		printf("bind() failed: %d", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_2;
 	}
 
 	result = listen(listenSocket, 5);
 	if (result == SOCKET_ERROR)
 	{
 		printf("listen() failed: %d", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_2;
 	}
 
 	SOCKADDR_IN blackSockAddr;
@@ -77,9 +72,7 @@ int main(int argc, char* argv[])
 	if (blackSocket == INVALID_SOCKET)
 	{
 		printf("accept() failed(black): %d", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_2;
 	}
 
 	char sendBuf[4];
@@ -93,12 +86,8 @@ int main(int argc, char* argv[])
 	if (result == SOCKET_ERROR)
 	{
 		printf("send() failed(black): %d", WSAGetLastError());
-		closesocket(listenSocket);
-		closesocket(blackSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_3;
 	}
-
 
 	printf("waiting for player-white...\n");
 	SOCKADDR_IN whiteSockAddr;
@@ -107,10 +96,7 @@ int main(int argc, char* argv[])
 	if (whiteSocket == INVALID_SOCKET)
 	{
 		printf("accept() failed(white): %d", WSAGetLastError());
-		closesocket(listenSocket);
-		closesocket(blackSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_3;
 	}
 	char whitePlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(whiteSocket, MAX_PLAYER_NAME_LENGTH, whitePlayerName);
@@ -121,11 +107,7 @@ int main(int argc, char* argv[])
 	if (result == SOCKET_ERROR)
 	{
 		printf("send() failed(white): %d", WSAGetLastError());
-		closesocket(listenSocket);
-		closesocket(blackSocket);
-		closesocket(whiteSocket);
-		WSACleanup();
-		return 1;
+		goto Cleanup_4;
 	}
 
 
@@ -143,7 +125,7 @@ int main(int argc, char* argv[])
 	CellState turn = BLACK;
 	while (1)
 	{
-		int result = ProcessGame((turn == BLACK ? blackSocket : whiteSocket), (turn == BLACK ? whiteSocket : blackSocket), turn, board);
+		result = ProcessGame((turn == BLACK ? blackSocket : whiteSocket), (turn == BLACK ? whiteSocket : blackSocket), turn, board);
 		if (result == GAMESTATE_ERROR)
 		{
 			printf("An error occured\n");
@@ -174,19 +156,23 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	result = shutdown(blackSocket, SD_SEND);
-	if (result == SOCKET_ERROR)
-	{
-		printf("shutdown() failed: %d", WSAGetLastError());
-	}
-	result = shutdown(whiteSocket, SD_SEND);
-	if (result == SOCKET_ERROR)
-	{
-		printf("shutdown() failed: %d", WSAGetLastError());
-	}
-	closesocket(blackSocket);
-	closesocket(whiteSocket);
+Cleanup_4:
+    if (shutdown(whiteSocket, SD_SEND) == SOCKET_ERROR)
+    {
+        printf("whiteSocket shutdown() failed: %d", WSAGetLastError());
+    }
+    closesocket(whiteSocket);
+Cleanup_3:
+    if (shutdown(blackSocket, SD_SEND) == SOCKET_ERROR)
+    {
+        printf("blackSocket shutdown() failed: %d", WSAGetLastError());
+    }
+    closesocket(blackSocket);
+Cleanup_2:
+    closesocket(listenSocket);
+Cleanup_1:
 	WSACleanup();
+Cleanup_0:
 	return 0;
 }
 
@@ -204,31 +190,27 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 	}
 	
 	int row, column;
-	// �浹 ��
+
 	ReceiveExact(whose, 4, buf);
 	memcpy(&row, buf, 4);
-	// �浹 ��
+
 	ReceiveExact(whose, 4, buf);
 	memcpy(&column, buf, 4);
 
-	// ��ȿ�� �������� Ȯ��
 	if (row < 0 || row > 14 || column < 0 || column > 14)
 	{
 		printf("OUT OF BOARD ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
-	// ���� �� ���µ� �������� �ϴ°��� ����
 	if (board[row][column] != EMPTY)
 	{
 		printf("CELL OCCUPIED ERROR\n");
 		return GAMESTATE_ERROR;
 	}
 
-	// ����
 	board[row][column] = (turn == BLACK ? BLACK : WHITE);
 
-	// �ٸ� �ʿ��� ������ ������
 	memcpy(buf, &row, 4);
 	result = send(other, buf, sizeof(buf), 0);
 	if (result == SOCKET_ERROR)
@@ -244,9 +226,7 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 		return GAMESTATE_ERROR;
 	}
 
-	
-	// ������ �ϼ��ߴ��� Ȯ��
-	for (int i = 0; i < 15; i++) // ����
+	for (int i = 0; i < 15; i++)
 	{
 		for (int j = 0; j < 15 - 5; j++)
 		{
@@ -256,7 +236,7 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 			}
 		}
 	}
-	for (int i = 0; i < 15-5; i++) // ����
+	for (int i = 0; i < 15-5; i++)
 	{
 		for (int j = 0; j < 15; j++)
 		{
@@ -266,7 +246,7 @@ int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15
 			}
 		}
 	}
-	for (int i = 0; i < 15 - 5; i++) // �밢��
+	for (int i = 0; i < 15 - 5; i++)
 	{
 		for (int j = 0; j < 15 - 5; j++)
 		{
