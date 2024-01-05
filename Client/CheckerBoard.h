@@ -1,15 +1,10 @@
 #pragma once
 
-typedef enum CellState_t
-{
-	EMPTY,
-	BLACK,
-	WHITE
-} CellState;
+#include "common.h"
 
 typedef struct CheckerBoard_t
 {
-	CellState cellStates_[15][15];
+	PlayerColor cellStates_[15][15];
 	unsigned short offsetX_;
 	unsigned short offsetY_;
 	unsigned short cellSize_;
@@ -26,6 +21,6 @@ void DrawCheckerBoard(CheckerBoard* pCheckerBoard, struct SDL_Renderer* pRendere
 
 void DrawCursorHovering(CheckerBoard* pCheckerBoard, struct SDL_Renderer* pRenderer, union SDL_Event* pEvent);
 
-void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, CellState value);
+void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, PlayerColor value);
 
 int GetMousePositionOverBoard(CheckerBoard* pCheckerBoard, union SDL_Event* pEvent, int* outRow, int* outCol);

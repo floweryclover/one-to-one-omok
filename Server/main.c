@@ -1,19 +1,14 @@
 #include <stdio.h>
 
 #include "network.h"
+#include "common.h"
 
 #define GAMESTATE_ERROR (-1)
 #define GAMESTATE_NOTHING 0
 #define GAMESTATE_BLACK_WIN 1
 #define GAMESTATE_WHITE_WIN 2
 
-typedef enum CellState_t {
-	EMPTY,
-	BLACK,
-	WHITE
-} CellState;
-
-int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15]);
+int ProcessGame(SOCKET whose, SOCKET other, PlayerColor turn, PlayerColor board[][15]);
 
 int main(int argc, char* argv[])
 {
@@ -72,7 +67,7 @@ int main(int argc, char* argv[])
 	char blackPlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(blackSocket, MAX_PLAYER_NAME_LENGTH, blackPlayerName);
 	printf("Player-black joined: %s\n", blackPlayerName);
-	CellState black = BLACK;
+    PlayerColor black = BLACK;
 	memcpy(sendBuf, &black, 4);
 	result = send(blackSocket, sendBuf, 4, 0);
 	if (result == SOCKET_ERROR)
@@ -94,7 +89,7 @@ int main(int argc, char* argv[])
 	char whitePlayerName[MAX_PLAYER_NAME_LENGTH];
 	ReceiveExact(whiteSocket, MAX_PLAYER_NAME_LENGTH, whitePlayerName);
 	printf("Player-white joined: %s\n", whitePlayerName);
-	CellState white = WHITE;
+    PlayerColor white = WHITE;
 	memcpy(sendBuf, &white, 4);
 	result = send(whiteSocket, sendBuf, 4, 0);
 	if (result == SOCKET_ERROR)
@@ -104,7 +99,7 @@ int main(int argc, char* argv[])
 	}
 
 
-	CellState board[15][15];
+    PlayerColor board[15][15];
 	for (int i = 0; i < 15; i++)
 	{
 		for (int j = 0; j < 15; j++)
@@ -115,7 +110,7 @@ int main(int argc, char* argv[])
 	int remainCellCount = 15 * 15;
 
 	printf("Game Start!\n\n");
-	CellState turn = BLACK;
+    PlayerColor turn = BLACK;
 	while (1)
 	{
 		result = ProcessGame((turn == BLACK ? blackSocket : whiteSocket), (turn == BLACK ? whiteSocket : blackSocket), turn, board);
@@ -169,7 +164,7 @@ Cleanup_0:
 	return 0;
 }
 
-int ProcessGame(SOCKET whose, SOCKET other, CellState turn, CellState board[][15])
+int ProcessGame(SOCKET whose, SOCKET other, PlayerColor turn, PlayerColor board[][15])
 {
 	printf("%s's turn\n", turn == BLACK ? "BLACK" : "WHITE");
 	char buf[4];

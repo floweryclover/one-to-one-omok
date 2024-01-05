@@ -4,6 +4,11 @@
 #include "CheckerBoard.h"
 #include "network.h"
 
+#define CELL_SIZE 32
+#define CELL_MARGIN 4
+#define OFFSET_X 32
+#define OFFSET_Y 32
+
 #pragma comment(lib, "SDL2main.lib")
 
 int main(int argc, char* argv[]) {
@@ -72,7 +77,7 @@ int main(int argc, char* argv[]) {
 	send(clientSocket, nameBuf, MAX_PLAYER_NAME_LENGTH, 0);
 
 	char buf[64];
-	CellState me;
+    PlayerColor me;
 	result = ReceiveExact(clientSocket, 4, buf);
 	if (result == SOCKET_ERROR)
 	{

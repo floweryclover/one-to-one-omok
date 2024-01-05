@@ -117,7 +117,7 @@ void DrawCursorHovering(CheckerBoard* pCheckerBoard, SDL_Renderer* pRenderer, SD
 	SDL_RenderDrawRect(pRenderer, &hover);
 }
 
-void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, CellState value)
+void UpdateCell(CheckerBoard* pCheckerBoard, int row, int column, PlayerColor value)
 {
 	if (pCheckerBoard == NULL)
 	{

@@ -10,11 +10,6 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define CELL_SIZE 32
-#define CELL_MARGIN 4
-#define OFFSET_X 32
-#define OFFSET_Y 32
-
 #define MAX_PLAYER_NAME_LENGTH 16
 
 #define OMOKPROTO_NOW_TURN 100

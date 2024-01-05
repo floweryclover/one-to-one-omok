@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.26)
 
 add_library(Common
-        network.c)
+        network.c
+        include/common.h)
 
 target_include_directories(Common PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
