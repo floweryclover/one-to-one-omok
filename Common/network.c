@@ -12,11 +12,16 @@ int ReceiveOmokPacket(SOCKET from, int* outType, void** outOmokPacketStruct)
     remainder = sizeof(int);
     while (remainder > 0)
     {
-        int received = 0;
-        received += recv(from, (char*)((&bodySize)+(sizeof(bodySize)-remainder)), remainder, 0);
-
-        remainder -= received;
-        result += received;
+        int received = recv(from, (char*)((&bodySize)+(sizeof(bodySize)-remainder)), remainder, 0);
+        if (received > 0)
+        {
+            remainder -= received;
+            result += received;
+        }
+        else
+        {
+            return received;
+        }
     }
 
     // type 읽기
@@ -24,28 +29,42 @@ int ReceiveOmokPacket(SOCKET from, int* outType, void** outOmokPacketStruct)
     remainder = sizeof(int);
     while (remainder > 0)
     {
-        int received = 0;
-        received += recv(from, (char*)((&type)+(sizeof(type)-remainder)), remainder, 0);
-
-        remainder -= received;
-        result += received;
+        int received = recv(from, (char*)((&type)+(sizeof(type)-remainder)), remainder, 0);
+        if (received > 0)
+        {
+            remainder -= received;
+            result += received;
+        }
+        else
+        {
+            return received;
+        }
     }
 
     // body 읽기
     char* buffer = malloc(bodySize);
     remainder = bodySize;
     {
-        int received = 0;
-        received += recv(from, buffer + (bodySize-remainder), remainder, 0);
-
-        remainder -= received;
-        result += received;
+        int received = recv(from, buffer + (bodySize-remainder), remainder, 0);
+        if (received > 0)
+        {
+            remainder -= received;
+            result += received;
+        }
+        else
+        {
+            free(buffer);
+            return received;
+        }
     }
 
     // 역직렬화
     void* pOmokPacketStruct;
     switch (type)
     {
+        case REQUEST_PLAYER_NAME:
+            pOmokPacketStruct = malloc(bodySize);
+            break;
         case RESPONSE_PLAYER_NAME:
             pOmokPacketStruct = malloc(sizeof(int) + bodySize); // nameLength 크기 + name 크기(여기서는 bodySize와 동일)
             memcpy(&(((PlayerNameResponse*)pOmokPacketStruct)->nameLength), &bodySize, sizeof(int));
@@ -71,6 +90,10 @@ int SendOmokPacket(SOCKET to, int type, void* pOmokPacketStruct)
     // 직렬화
     switch(type)
     {
+        case REQUEST_PLAYER_NAME:
+            bodySize = sizeof(PlayerNameRequest);
+            buffer = (char*)malloc(bodySize);
+            break;
         case RESPONSE_PLAYER_NAME:
             PlayerNameResponse* pPlayerName = (PlayerNameResponse*)pOmokPacketStruct;
             bodySize = pPlayerName->nameLength;
@@ -83,12 +106,31 @@ int SendOmokPacket(SOCKET to, int type, void* pOmokPacketStruct)
     }
 
     char header[8];
-    int result;
+    int result, returnValue;
     memcpy(header, &bodySize, 4);
     memcpy(header + 4, &type, 4);
     result = send(to, header, 8, 0);
-    result += send(to, buffer, bodySize, 0);
+    if (result > 0)
+    {
+        returnValue = result;
+    }
+    else
+    {
+        free(buffer);
+        return result;
+    }
+
+    result = send(to, buffer, bodySize, 0);
+    if (result > 0)
+    {
+        returnValue += result;
+    }
+    else
+    {
+        free(buffer);
+        return result;
+    }
 
     free(buffer);
-    return result;
+    return returnValue;
 }
