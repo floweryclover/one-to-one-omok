@@ -1,4 +1,5 @@
 # OneToOneOmok - 1대1 오목 예제
+![이미지](https://github.com/floweryclover/one-to-one-omok/assets/35604150/23451bd4-e21a-4d4d-8a1a-350f2048630f)
 * 1 서버, 2 클라이언트 구조의 TCP 소켓 프로그래밍 예제입니다.
 * C언어로 Windows Socket의 저수준 API만을 이용하여 구현했습니다.
 * 직접 오목 프로토콜을 구현하여 패킷 기반으로 통신합니다.
