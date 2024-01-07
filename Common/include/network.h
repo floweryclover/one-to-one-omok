@@ -16,6 +16,7 @@
 #define OMOKPROTO_GAMEOVER_BLACKWIN 101
 #define OMOKPROTO_GAMEOVER_WHITEWIN 102
 
-int ReceiveExact(SOCKET from, int size, char* buf);
+int ReceiveOmokPacket(SOCKET from, int* outType, void** outOmokPacketStruct);
+int SendOmokPacket(SOCKET to, int type, void* pOmokPacketStruct);
 
 #endif //ONETOONEOMOK_NETWORK_H
