@@ -3,6 +3,7 @@
 #include "SDL.h"
 #include "CheckerBoard.h"
 #include "network.h"
+#include "packet.h"
 
 #define CELL_SIZE 32
 #define CELL_MARGIN 4
@@ -62,7 +63,6 @@ int main(int argc, char* argv[]) {
 	inet_pton(AF_INET, argv[1], &serverAddr.sin_addr);
 	serverAddr.sin_port = htons(atoi(argv[2]));
 	serverAddr.sin_family = AF_INET;
-	
 	result = connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
 	if (result == SOCKET_ERROR)
 	{
@@ -70,89 +70,75 @@ int main(int argc, char* argv[]) {
 		goto Cleanup_6;
 	}
 
-	char nameBuf[MAX_PLAYER_NAME_LENGTH];
-	strcpy_s(nameBuf, MAX_PLAYER_NAME_LENGTH, argv[3]);
-	send(clientSocket, nameBuf, MAX_PLAYER_NAME_LENGTH, 0);
-
-	char buf[64];
-    PlayerColor me;
-	result = ReceiveExact(clientSocket, 4, buf);
-	if (result == SOCKET_ERROR)
-	{
-		printf("recv() failed: %d\n", WSAGetLastError());
-        goto Cleanup_6;
-	}
-	memcpy(&me, buf, 4);
-	printf("I AM %s", me == BLACK? "BLACK" : "WHITE");
-
-	u_long on = 1;
-	result = ioctlsocket(clientSocket, FIONBIO, &on);
-	if (result == SOCKET_ERROR)
-	{
-		printf("ioctlsocket() failed: %d\n", WSAGetLastError());
-		goto Cleanup_6;
-	}
-
-	Uint64 lastUpdateTick = SDL_GetTicks64();
-	int receivedData;
-	int receivedRow = 0;
-	int receivedColumn = 0;
-	int isMyTurn = 0;
+    int myColor = EMPTY;
+    int isMyTurn = 0;
+    fd_set readFdSet, readFdSetCopy;
+    struct timeval time;
+    FD_ZERO(&readFdSet);
+    FD_SET(clientSocket, &readFdSet);
 	while (1)
 	{
-		int received = ReceiveExact(clientSocket, 4, buf);
-		if (received == SOCKET_ERROR)
-		{
-			int errorCode = WSAGetLastError();
-			if (errorCode != WSAEWOULDBLOCK)
-			{
-				printf("recv() error: %d", errorCode);
-				break;
-			}
-		}
-		else
-		{
-			if (received == 0)
-			{
-				break;
-			}
-			memcpy(&receivedData, buf, 4);
-			if (receivedData == OMOKPROTO_NOW_TURN)
-			{
-				isMyTurn = 1;
-			}
-			else if (receivedData == OMOKPROTO_GAMEOVER_BLACKWIN)
-			{
+        time.tv_usec = 100;
+        time.tv_sec = 0;
+        readFdSetCopy = readFdSet;
+        result = select(1, &readFdSetCopy, NULL, NULL, &time);
+        if (result == -1)
+        {
+            fprintf(stderr, "An error occured in select().\n");
+            break;
+        }
+        else if (result > 0)
+        {
+            int receivedType;
+            void* receivedPacket;
+            result = ReceiveOmokPacket(clientSocket, &receivedType, &receivedPacket);
+            if (result == 0)
+            {
+                fprintf(stderr, "Connection closed.\n");
+                goto Cleanup_6;
+            }
+            else if (result < 0)
+            {
+                fprintf(stderr, "An error occured while receiving packet: %d\n", WSAGetLastError());
+                goto Cleanup_6;
+            }
 
-			}
-			else if (receivedData == OMOKPROTO_GAMEOVER_WHITEWIN)
-			{
+            result = 1;
+            switch (receivedType)
+            {
+                case REQUEST_PLAYER_NAME:
+                    PlayerNameResponse* response;
+                    response = (PlayerNameResponse*)malloc(sizeof(int) + strlen(argv[3]));
+                    response->nameLength = strlen(argv[3]);
+                    memcpy(response->name, argv[3], response->nameLength);
+                    result = SendOmokPacket(clientSocket, RESPONSE_PLAYER_NAME, (void*)response);
+                    free(response);
+                    break;
+                case RESPONSE_PLAYER_NAME:
+                    break;
+                case SET_PLAYER_COLOR:
+                    PlayerColorPacket* pColor = (PlayerColorPacket*)receivedPacket;
+                    myColor = pColor->color;
+                    break;
+                case REQUEST_PLACE_STONE:
+                    isMyTurn = 1;
+                    break;
+                case RESPONSE_PLACE_STONE:
+                    PlaceStoneResponse* pStoneResponse = (PlaceStoneResponse*)receivedPacket;
+                    UpdateCell(pCheckerBoard, pStoneResponse->row, pStoneResponse->column, pStoneResponse->playerColor);
+                    break;
+                default:
+                    fprintf(stderr, "Received unknown type of packet: %d\n", receivedType);
+                    goto Cleanup_6;
+            }
+            if (result <= 0)
+            {
+                fprintf(stderr, "Failed to send packet.\n");
+                goto Cleanup_6;
+            }
 
-			}
-			else
-			{
-				if (receivedData >= 0 && receivedData <= 14)
-				{
-					if (receivedRow == 0)
-					{
-						receivedRow = receivedData;
-					}
-					else
-					{
-						receivedColumn = receivedData;
-						UpdateCell(pCheckerBoard, receivedRow, receivedColumn, me == BLACK ? WHITE : BLACK);
-
-						receivedRow = 0;
-						receivedColumn = 0;
-					}
-				}
-				else
-				{
-					printf("received unknown packet: %d", receivedData);
-					break;
-				}
-			}
-		}
+            free(receivedPacket);
+        }
 
 		SDL_Event event;
 		
@@ -180,40 +166,15 @@ int main(int argc, char* argv[]) {
 						int column;
 						if (GetMousePositionOverBoard(pCheckerBoard, &event, &row, &column) && pCheckerBoard->cellStates_[row][column] == EMPTY)
 						{
-							u_long off = 0;
-							result = ioctlsocket(clientSocket, FIONBIO, &off);
-							if (result == SOCKET_ERROR)
-							{
-								printf("ioctlsocket() (off) failed: %d\n", WSAGetLastError());
-								break;
-							}
-
-							memcpy(buf, &row, 4);
-							int sendResult = send(clientSocket, buf, 4, 0);
-							if (sendResult == 0)
-							{
-								printf("connection closed\n");
-								break;
-							}
-							memcpy(buf, &column, 4);
-							sendResult = send(clientSocket, buf, 4, 0);
-							if (sendResult == 0)
-							{
-								printf("connection closed\n");
-								break;
-							}
-
-							UpdateCell(pCheckerBoard, row, column, me);
-
-							isMyTurn = 0;
-
-							u_long on = 1;
-							result = ioctlsocket(clientSocket, FIONBIO, &on);
-							if (result == SOCKET_ERROR)
-							{
-								printf("ioctlsocket() (on) failed: %d\n", WSAGetLastError());
-								break;
-							}
+                            PlaceStoneResponse myResponse;
+                            myResponse.playerColor = myColor;
+                            myResponse.row = row;
+                            myResponse.column = column;
+                            if (SendOmokPacket(clientSocket, RESPONSE_PLACE_STONE, (const void*)(&myResponse)) <= 0)
+                            {
+                                fprintf(stderr, "Failed to send packet containing the location to be placed.\n");
+                                goto Cleanup_6;
+                            }
 						}
 					}
 				}

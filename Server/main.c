@@ -2,6 +2,7 @@
 
 #include "network.h"
 #include "common.h"
+#include "packet.h"
 
 #define GAMESTATE_ERROR (-1)
 #define GAMESTATE_NOTHING 0
@@ -52,6 +53,10 @@ int main(int argc, char* argv[])
 		goto Cleanup_2;
 	}
 
+    PlayerNameRequest request;
+    ZeroMemory(&request, sizeof(PlayerNameRequest));
+    int receivedType;
+    void* receivedPacketBody;
 	SOCKADDR_IN blackSockAddr;
 	int blackSockAddrSize = sizeof(blackSockAddr);
 	printf("waiting for player-black...\n");
@@ -61,20 +66,31 @@ int main(int argc, char* argv[])
 		printf("accept() failed(black): %d", WSAGetLastError());
 		goto Cleanup_2;
 	}
-
-	char sendBuf[4];
-
-	char blackPlayerName[MAX_PLAYER_NAME_LENGTH];
-	ReceiveExact(blackSocket, MAX_PLAYER_NAME_LENGTH, blackPlayerName);
-	printf("Player-black joined: %s\n", blackPlayerName);
-    PlayerColor black = BLACK;
-	memcpy(sendBuf, &black, 4);
-	result = send(blackSocket, sendBuf, 4, 0);
-	if (result == SOCKET_ERROR)
-	{
-		printf("send() failed(black): %d", WSAGetLastError());
-		goto Cleanup_3;
-	}
+    if (SendOmokPacket(blackSocket, REQUEST_PLAYER_NAME, &request) <= 0)
+    {
+        fprintf(stderr, "흑돌 클라이언트에게 이름 입력을 요청할 수 없습니다: %d", WSAGetLastError());
+        goto Cleanup_3;
+    }
+    if (ReceiveOmokPacket(blackSocket, &receivedType, &receivedPacketBody) <= 0)
+    {
+        fprintf(stderr, "흑돌 클라이언트에게서 이름 데이터를 받을 수 없습니다: %d", WSAGetLastError());
+        goto Cleanup_3;
+    }
+    if (receivedType != RESPONSE_PLAYER_NAME)
+    {
+        fprintf(stderr, "흑돌 클라이언트에게서 이름 데이터를 받으려 했으나 다른 패킷이 도착했습니다.\n");
+        goto Cleanup_3;
+    }
+    PlayerNameResponse blackPlayerNameResponse = *((PlayerNameResponse*)receivedPacketBody);
+    free(receivedPacketBody);
+	printf("Player-black joined: %s\n", blackPlayerNameResponse.name);
+    PlayerColorPacket playerColorPacket;
+    playerColorPacket.color = BLACK;
+    if (SendOmokPacket(blackSocket, SET_PLAYER_COLOR, (void*)(&playerColorPacket)) <= 0)
+    {
+        fprintf(stderr, "흑돌 클라이언트에게 색상 데이터를 전송할 수 없습니다: %d\n", WSAGetLastError());
+        goto Cleanup_3;
+    }
 
 	printf("waiting for player-white...\n");
 	SOCKADDR_IN whiteSockAddr;
@@ -85,19 +101,30 @@ int main(int argc, char* argv[])
 		printf("accept() failed(white): %d", WSAGetLastError());
 		goto Cleanup_3;
 	}
-
-	char whitePlayerName[MAX_PLAYER_NAME_LENGTH];
-	ReceiveExact(whiteSocket, MAX_PLAYER_NAME_LENGTH, whitePlayerName);
-	printf("Player-white joined: %s\n", whitePlayerName);
-    PlayerColor white = WHITE;
-	memcpy(sendBuf, &white, 4);
-	result = send(whiteSocket, sendBuf, 4, 0);
-	if (result == SOCKET_ERROR)
-	{
-		printf("send() failed(white): %d", WSAGetLastError());
-		goto Cleanup_4;
-	}
-
+    if (SendOmokPacket(whiteSocket, REQUEST_PLAYER_NAME, &request) <= 0)
+    {
+        fprintf(stderr, "백돌 클라이언트에게 이름 입력을 요청할 수 없습니다: %d", WSAGetLastError());
+        goto Cleanup_4;
+    }
+    if (ReceiveOmokPacket(whiteSocket, &receivedType, &receivedPacketBody) <= 0)
+    {
+        fprintf(stderr, "백돌 클라이언트에게서 이름 데이터를 받을 수 없습니다: %d", WSAGetLastError());
+        goto Cleanup_4;
+    }
+    if (receivedType != RESPONSE_PLAYER_NAME)
+    {
+        fprintf(stderr, "백돌 클라이언트에게서 이름 데이터를 받으려 했으나 다른 패킷이 도착했습니다.\n");
+        goto Cleanup_4;
+    }
+    PlayerNameResponse whitePlayerNameResponse = *((PlayerNameResponse*)receivedPacketBody);
+    free(receivedPacketBody);
+	printf("Player-white joined: %s\n", whitePlayerNameResponse.name);
+    playerColorPacket.color = WHITE;
+    if (SendOmokPacket(whiteSocket, SET_PLAYER_COLOR, (void*)(&playerColorPacket)) <= 0)
+    {
+        fprintf(stderr, "백돌 클라이언트에게 색상 데이터를 전송할 수 없습니다: %d\n", WSAGetLastError());
+        goto Cleanup_4;
+    }
 
     PlayerColor board[15][15];
 	for (int i = 0; i < 15; i++)
@@ -167,24 +194,30 @@ Cleanup_0:
 int ProcessGame(SOCKET whose, SOCKET other, PlayerColor turn, PlayerColor board[][15])
 {
 	printf("%s's turn\n", turn == BLACK ? "BLACK" : "WHITE");
-	char buf[4];
-	int toSend = OMOKPROTO_NOW_TURN;
-	memcpy(buf, &toSend, 4);
-	int result = send(whose, buf, sizeof(buf), 0);
-	if (result == SOCKET_ERROR)
-	{
-		printf("TURN SEND ERROR\n");
-		return GAMESTATE_ERROR;
-	}
-	
-	int row, column;
+    PlaceStoneRequest request;
+    ZeroMemory(&request, sizeof(char));
+    if (SendOmokPacket(whose, REQUEST_PLACE_STONE, (void*)(&request)) <= 0)
+    {
+        fprintf(stderr, "Failed to instruct player-%s to place a stone: %d\n", (turn == BLACK ? "black" : "white"), WSAGetLastError());
+        return GAMESTATE_ERROR;
+    }
 
-	ReceiveExact(whose, 4, buf);
-	memcpy(&row, buf, 4);
+    int receivedType;
+	PlaceStoneResponse* response;
+    if (ReceiveOmokPacket(whose, &receivedType, (void*)(&response)) <= 0)
+    {
+        fprintf(stderr, "Failed to receive a location from player-%s: %d\n", (turn == BLACK ? "black" : "white"), WSAGetLastError());
+        return GAMESTATE_ERROR;
+    }
+    if (receivedType != RESPONSE_PLACE_STONE)
+    {
+        fprintf(stderr, "Failed to send the location of the stone placed this time to player-%s.\n", (turn == BLACK ? "black" : "white"));
+        return GAMESTATE_ERROR;
+    }
 
-	ReceiveExact(whose, 4, buf);
-	memcpy(&column, buf, 4);
-
+    int row = response->row;
+    int column = response->column;
+    free(response);
 	if (row < 0 || row > 14 || column < 0 || column > 14)
 	{
 		printf("OUT OF BOARD ERROR\n");
@@ -197,22 +230,22 @@ int ProcessGame(SOCKET whose, SOCKET other, PlayerColor turn, PlayerColor board[
 		return GAMESTATE_ERROR;
 	}
 
-	board[row][column] = (turn == BLACK ? BLACK : WHITE);
+	board[row][column] = turn;
 
-	memcpy(buf, &row, 4);
-	result = send(other, buf, sizeof(buf), 0);
-	if (result == SOCKET_ERROR)
-	{
-		printf("ROW SEND ERROR\n");
-		return GAMESTATE_ERROR;
-	}
-	memcpy(buf, &column, 4);
-	result = send(other, buf, sizeof(buf), 0);
-	if (result == SOCKET_ERROR)
-	{
-		printf("COLUMN SEND ERROR\n");
-		return GAMESTATE_ERROR;
-	}
+    PlaceStoneResponse toApplyScreen;
+    toApplyScreen.playerColor = turn;
+    toApplyScreen.row = row;
+    toApplyScreen.column = column;
+    if (SendOmokPacket(whose, RESPONSE_PLACE_STONE, &toApplyScreen) <= 0)
+    {
+        fprintf(stderr, "%s에게 돌 업데이트 정보를 전송하는 데에 실패했습니다:%d\n", (turn == BLACK ? "흑돌" : "백돌"), WSAGetLastError());
+        return GAMESTATE_ERROR;
+    }
+    if (SendOmokPacket(other, RESPONSE_PLACE_STONE, &toApplyScreen) <= 0)
+    {
+        fprintf(stderr, "%s에게 돌 업데이트 정보를 전송하는 데에 실패했습니다:%d\n", (turn == BLACK ? "백돌" : "흑돌"), WSAGetLastError());
+        return GAMESTATE_ERROR;
+    }
 
 	for (int i = 0; i < 15; i++)
 	{
