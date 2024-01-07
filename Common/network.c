@@ -83,7 +83,7 @@ int ReceiveOmokPacket(SOCKET from, int* outType, void** outOmokPacketStruct)
     return result;
 }
 
-int SendOmokPacket(SOCKET to, int type, void* pOmokPacketStruct)
+int SendOmokPacket(SOCKET to, int type, const void* pOmokPacketStruct)
 {
     char* buffer = NULL;
     int bodySize;
